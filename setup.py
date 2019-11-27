@@ -1,9 +1,7 @@
-#!/usr/bin/env python
-# coding=utf-8
-
 from pathlib import Path
 
 from setuptools import setup
+import os
 
 classifiers = """
 Development Status :: 5 - Production/Stable
@@ -38,10 +36,11 @@ setup(
     author_email=about["__author_email__"],
     url=about["__url__"],
     packages=["sacred", "sacred.observers", "sacred.config", "sacred.stflow"],
+    package_data={"sacred": [os.path.join("data", "*")]},
     scripts=[],
     install_requires=Path("requirements.txt").read_text().splitlines(),
     tests_require=["mock>=0.8, <3.0", "pytest==4.3.0"],
     classifiers=list(filter(None, classifiers.split("\n"))),
     description="Facilitates automated and reproducible experimental research",
-    long_description=Path("README.rst").read_text(),
+    long_description=Path("README.rst").read_text(encoding="utf-8"),
 )

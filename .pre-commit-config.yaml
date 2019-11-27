@@ -1,10 +1,10 @@
 fail_fast: true
 repos:
 -   repo: https://github.com/psf/black
-    rev: master
+    rev: stable
     hooks:
     - id: black
-      language_version: python3.6
+      language_version: python3
 -   repo: https://gitlab.com/pycqa/flake8
     rev: 3.7.8
     hooks:

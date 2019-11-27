@@ -15,11 +15,14 @@ from sacred.observers.base import RunObserver
 from sacred.observers.queue import QueueObserver
 from sacred.serializer import flatten
 from sacred.utils import ObserverError, PathType
+import pkg_resources
 
 DEFAULT_MONGO_PRIORITY = 30
 
 # This ensures consistent mimetype detection across platforms.
-mimetypes.init(files=[])
+mimetype_detector = mimetypes.MimeTypes(
+    filenames=[pkg_resources.resource_filename("sacred", "data/mime.types")]
+)
 
 
 def force_valid_bson_key(key):
@@ -276,7 +279,7 @@ class MongoObserver(RunObserver):
 
     @staticmethod
     def _try_to_detect_content_type(filename):
-        mime_type, _ = mimetypes.guess_type(filename)
+        mime_type, _ = mimetype_detector.guess_type(filename)
         if mime_type is not None:
             print(
                 "Added {} as content-type of artifact {}.".format(mime_type, filename)
@@ -326,7 +329,9 @@ class MongoObserver(RunObserver):
             if autoinc_key:
                 c = self.runs.find({}, {"_id": 1})
                 c = c.sort("_id", pymongo.DESCENDING).limit(1)
-                self.run_entry["_id"] = c.next()["_id"] + 1 if c.count() else 1
+                self.run_entry["_id"] = (
+                    c.next()["_id"] + 1 if self.runs.count_documents({}, limit=1) else 1
+                )
             try:
                 self.runs.insert_one(self.run_entry)
                 return
@@ -525,10 +530,10 @@ class QueueCompatibleMongoObserver(MongoObserver):
             self.runs.update_one(
                 {"_id": self.run_entry["_id"]}, {"$set": self.run_entry}
             )
-        except pymongo.errors.InvalidDocument:
+        except pymongo.errors.InvalidDocument as exc:
             raise ObserverError(
-                "Run contained an unserializable entry." "(most likely in the info)"
-            )
+                "Run contained an unserializable entry. (most likely in the info)"
+            ) from exc
 
     def final_save(self, attempts):
         import pymongo
@@ -576,8 +581,8 @@ class QueuedMongoObserver(QueueObserver):
 
     def __init__(
         self,
-        interval: int = 20,
-        retry_interval: int = 10,
+        interval: float = 20.0,
+        retry_interval: float = 10.0,
         url: Optional[str] = None,
         db_name: str = "sacred",
         collection: str = "runs",
